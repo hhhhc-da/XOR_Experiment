@@ -56,12 +56,12 @@ int main(void)
     printf("获取结果为: %d\n\n", ret0);
 
     printf("测试 1 XOR 1:\n");
-    pvForward(&pModel, &input[6], 2);
+    pvForward(&pModel, &input[4], 2);
     int ret1 = ulGetResultIndex(&pModel);
     printf("获取结果为: %d\n\n", ret1);
 
     printf("测试 1 XOR 0:\n");
-    pvForward(&pModel, &input[4], 2);
+    pvForward(&pModel, &input[6], 2);
     int ret2 = ulGetResultIndex(&pModel);
     printf("获取结果为: %d\n\n", ret2);
 
@@ -69,6 +69,8 @@ int main(void)
     pvForward(&pModel, &input[0], 2);
     int ret3 = ulGetResultIndex(&pModel);
     printf("获取结果为: %d\n\n\n", ret3);
+
+    free(pModel);
 
     system("pause");
     return 0;
