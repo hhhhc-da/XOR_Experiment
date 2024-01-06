@@ -1,16 +1,16 @@
 #include "XOR_Model.h"
 
-// Ñ§Ï°ÂÊ
+// å­¦ä¹ çŽ‡
 #define LR 0.001
-// µü´ú×î´óÂÖÊý
+// è¿­ä»£æœ€å¤§è½®æ•°
 #define EPOCH 1000
 
-// ÑµÁ·Ö÷º¯Êý
+// è®­ç»ƒä¸»å‡½æ•°
 int main(void)
 {
-    // ÑµÁ·¼¯£¬¸ñÊ½Âú×ã input[2k] XOR input[2k+1] = output[2k]
+    // è®­ç»ƒé›†ï¼Œæ ¼å¼æ»¡è¶³ input[2k] XOR input[2k+1] = output[2k]
     double input[8] = {0, 0, 0, 1, 1, 1, 1, 0};
-    // 1 0 ±íÊ¾ 0 (index)£¬0 1 ±íÊ¾ 1
+    // 1 0 è¡¨ç¤º 0 (index)ï¼Œ0 1 è¡¨ç¤º 1
     double output[8] = {1, 0, 0, 1, 1, 0, 0, 1};
 
     xModel *pModel = (xModel *)malloc(sizeof(xModel));
@@ -41,7 +41,7 @@ int main(void)
             *(pModel->loss_end) = loss;
             ++(pModel->loss_end);
         }
-        // ¸üÐÂ×î¼Ñ loss
+        // æ›´æ–°æœ€ä½³ loss
         if (loss < pModel->best_loss)
         {
             pModel->best_loss = loss;
@@ -50,26 +50,27 @@ int main(void)
 
     } while (!pvEarlyStopDetect(&pModel) && count < EPOCH);
 
-    printf("\n²âÊÔ 0 XOR 1:\n");
+    printf("\næµ‹è¯• 0 XOR 1:\n");
     pvForward(&pModel, &input[2], 2);
     int ret0 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\n\n", ret0);
+    printf("èŽ·å–ç»“æžœä¸º: %d\n\n", ret0);
 
-    printf("²âÊÔ 1 XOR 1:\n");
+    printf("æµ‹è¯• 1 XOR 1:\n");
     pvForward(&pModel, &input[4], 2);
     int ret1 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\n\n", ret1);
+    printf("èŽ·å–ç»“æžœä¸º: %d\n\n", ret1);
 
-    printf("²âÊÔ 1 XOR 0:\n");
+    printf("æµ‹è¯• 1 XOR 0:\n");
     pvForward(&pModel, &input[6], 2);
     int ret2 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\n\n", ret2);
+    printf("èŽ·å–ç»“æžœä¸º: %d\n\n", ret2);
 
-    printf("²âÊÔ 0 XOR 0:\n");
+    printf("æµ‹è¯• 0 XOR 0:\n");
     pvForward(&pModel, &input[0], 2);
     int ret3 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\n\n\n", ret3);
+    printf("èŽ·å–ç»“æžœä¸º: %d\n\n\n", ret3);
 
+    pvDeInit(&pModel);
     free(pModel);
 
     system("pause");
