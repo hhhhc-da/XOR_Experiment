@@ -9,11 +9,8 @@
 #include <stdint.h>
 #include <limits.h>
 
-// ReLU 线性修正函数
 double ReLU(double dMem);
-// Logistic 函数
 void Logistic(double **pMem, unsigned ulCount);
-// 交叉熵 cross enrtopy 函数
 double CrossEntropy(double *pMem, double *pLabel, unsigned ulCount);
 
 #endif

@@ -10,26 +10,31 @@
 #include <fstream>
 #include <string>
 #include <random>
+#include <chrono>
 using namespace std;
 
-ifstream ifs("Gausee_0_p2.txt");
+#define GAUSS_NUM 26
+
 string tmp = "";
 unsigned index = 0;
-double GaussData[12];
+double GaussData[GAUSS_NUM];
 std::random_device rd;
 std::mt19937 gen(rd());
 std::normal_distribution<double> dist(0, 2.3);
+std::uniform_int_distribution<int> rd_index(0, 7);
 
 // 容忍率
-#define LOSS_NUM 10
+#define LOSS_NUM 50
 // 学习率
 #define LR 0.001
 // 衰减率
-#define GR 0.99
+#define GR 0.999
 // 衰减保护轮数
-#define GAMA_STEP 100
+#define GAMA_STEP 5000
 // 迭代最大轮数
-#define EPOCH 1000
+#define EPOCH 10000
+// 寻找最大轮数
+#define FIND_EPOCH 500000
 
 // 代表无穷大
 const double inf = __DBL_MAX__;
@@ -41,10 +46,16 @@ typedef enum
     x1 = 0x00,
     // 输入层 x2
     x2,
+    // 输入层 x3
+    x3,
     // 隐藏层 h1
     h1,
     // 隐藏层 h2
     h2,
+    // 隐藏层 h3
+    h3,
+    // 隐藏层 h4
+    h4,
     // 输出层 o1
     o1,
     // 输出层 o2
@@ -52,7 +63,11 @@ typedef enum
     // Loss 对 h1 的偏导数
     LTh1,
     // Loss 对 h2 的偏导数
-    LTh2
+    LTh2,
+    // Loss 对 h3 的偏导数
+    LTh3,
+    // Loss 对 h4 的偏导数
+    LTh4
 } ucType;
 
 // 模型结构体
@@ -101,96 +116,154 @@ double lr_fall(unsigned epoch);
 
 int main(void)
 {
-    // 训练集，格式满足 input[2k] XOR input[2k+1] = output[2k]
-    double input[8] = {0, 0, 0, 1, 1, 1, 1, 0};
-    // 1 0 表示 0 (index)，0 1 表示 1
-    double output[8] = {1, 0, 0, 1, 1, 0, 0, 1};
+    auto time_start = std::chrono::steady_clock::now();
+    // 训练集，格式满足 Dark_Function(input[3k],input[3k+1],input[3k+2]) = output[2k]
+    double input[24] = {0, 0, 0,
+                        0, 0, 1,
+                        0, 1, 0,
+                        0, 1, 1,
+                        1, 0, 0,
+                        1, 0, 1,
+                        1, 1, 0,
+                        1, 1, 1};
+    // 同时我们的训练集还要进行归一化
+    /* 即 Xi = Xi/Σ(Xπi) , 其中 Xi ∈ X 是训练集中任意元素, Xπi 是所在行的全部元素 */
+
+    // 新规则如下
+    /* f(0, 0, 0) = 0  f(0, 0, 1) = 1
+     * f(0, 1, 0) = 1  f(0, 1, 1) = 0
+     * f(1, 0, 0) = 1  f(1, 0, 1) = 0
+     * f(1, 1, 0) = 0  f(1, 1, 1) = 1
+     */
+    double output[16] = {1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1};
 
     unsigned find_count = 0;
-    while (find_count++ < 5000)
+    while (find_count++ < FIND_EPOCH)
     {
+        if (find_count % 20 == 0)
+            printf("Find Count - [%u]\n", find_count);
 
         xModel *pModel = (xModel *)malloc(sizeof(xModel));
         pvInit(&pModel);
 
         unsigned count = 0;
 
-        do
+        // do
+        // {
+        //     // if (count % 20 == 0)
+        //     //     printf("\n\nEpoch[%u]\n", ++count);
+
+        //     unsigned i = 0;
+        //     double loss = 0;
+
+        //     // 随机抽样（伪随机）, 20 次抽样取均值
+        //     for (; i < 20; ++i)
+        //     {
+        //         unsigned rdi = rd_index(gen);
+        //         pvForward(&pModel, &input[3 * rdi], 3);
+        //         loss += pvBackward(&pModel, LR * lr_fall(count), &output[2 * rdi], 2);
+        //     }
+
+        //     if (pModel->loss_end - pModel->loss == LOSS_NUM - 1)
+        //     {
+        //         *(pModel->loss_end) = loss;
+        //         pModel->loss_end = pModel->loss;
+        //     }
+        //     else
+        //     {
+        //         *(pModel->loss_end) = loss;
+        //         ++(pModel->loss_end);
+        //     }
+        //     // 更新最佳 loss
+        //     if (loss < pModel->best_loss)
+        //     {
+        //         pModel->best_loss = loss;
+        //     }
+        //     // pvDisplayWeights(&pModel);
+
+        // } while (!pvEarlyStopDetect(&pModel) && count < EPOCH);
+
+        int ret[8];
+
+        for (int i = 0; i < 8; ++i)
         {
-            if (count % 200 == 0)
-                printf("\n\nEpoch[%u]\n", ++count);
+            pvForward(&pModel, &input[3 * i], 3);
+            ret[i] = ulGetResultIndex(&pModel);
+        }
 
-            unsigned i = 0;
-            double loss = 0;
-            for (; i < 4; ++i)
+        unsigned char owari = 1;
+
+        for (int i = 0; i < 8; ++i)
+        {
+            if (ret[i] != output[2 * i + 1])
             {
-                pvForward(&pModel, &input[2 * i], 2);
-                loss += pvBackward(&pModel, LR * lr_fall(count), &output[2 * i], 2);
+                owari = 0;
+                break;
             }
+        }
 
-            if (pModel->loss_end - pModel->loss == 4)
+        if (owari == 1)
+        {
+            printf("\t检测成功: return ");
+            for (int i = 0; i < 8; ++i)
+                printf("%u ", ret[i]);
+            printf("\n\n");
+
+            // cout << "{";
+            // for (int i = 0; i < GAUSS_NUM - 1; ++i)
+            // {
+            //     cout << GaussData[i] << ",";
+            // }
+            // cout << GaussData[GAUSS_NUM - 1] << "}";
+
+            pvDisplayWeights(&pModel);
+
+            ofstream of("D:\\pandownload1\\Desktop\\CodingFolder\\C\\Encoder\\XOR_Debug\\result.txt", ios::trunc);
+
+            if (!of.good())
             {
-                *(pModel->loss_end) = loss;
-                pModel->loss_end = pModel->loss;
+                cout << "打开文件 result.txt 失败" << endl;
             }
             else
             {
-                *(pModel->loss_end) = loss;
-                ++(pModel->loss_end);
+                of << "{";
+                for (int i = 0; i < GAUSS_NUM - 1; ++i)
+                    of << GaussData[i] << ",";
+                of << GaussData[GAUSS_NUM - 1] << "}\n";
+
+                of << "{";
+                for (int i = 0; i < 12; ++i)
+                    of << pModel->W1[i] << ",";
+                for (int i = 0; i < 8; ++i)
+                    of << pModel->W2[i] << ",";
+                for (int i = 0; i < 4; ++i)
+                    of << pModel->B1[i] << ",";
+
+                of << pModel->B2[0] << "," << pModel->B2[1] << "}" << flush;
+                of.close();
+
+                pvDeInit(&pModel);
+                free(pModel);
+                break;
             }
-            // 更新最佳 loss
-            if (loss < pModel->best_loss)
-            {
-                pModel->best_loss = loss;
-            }
-            // pvDisplayWeights(&pModel);
-
-        } while (!pvEarlyStopDetect(&pModel) && count < EPOCH);
-
-        // printf("\n测试 0 XOR 1:\n");
-        pvForward(&pModel, &input[2], 2);
-        int ret0 = ulGetResultIndex(&pModel);
-        // printf("获取结果为: %d\n\n", ret0);
-
-        // printf("测试 1 XOR 1:\n");
-        pvForward(&pModel, &input[4], 2);
-        int ret1 = ulGetResultIndex(&pModel);
-        // printf("获取结果为: %d\n\n", ret1);
-
-        // printf("测试 1 XOR 0:\n");
-        pvForward(&pModel, &input[6], 2);
-        int ret2 = ulGetResultIndex(&pModel);
-        // printf("获取结果为: %d\n\n", ret2);
-
-        // printf("测试 0 XOR 0:\n");
-        pvForward(&pModel, &input[0], 2);
-        int ret3 = ulGetResultIndex(&pModel);
-        // printf("获取结果为: %d\n\n\n", ret3);
-
-        if (ret0 == 1 && ret1 == 0 && ret2 == 1 && ret3 == 0)
-        {
-            printf("\t检测成功: ret %u %u %u %u\n", ret0, ret1, ret2, ret3);
-            for (int i = 0; i < 12; ++i)
-            {
-                cout << GaussData[i] << "\t";
-            }
-            break;
         }
         else
         {
-            printf("\t检测失败: ret %u %u %u %u\n", ret0, ret1, ret2, ret3);
+            // printf("\t检测失败: return ");
+            // for (int i = 0; i < 8; ++i)
+            //     printf("%u ", ret[i]);
+            // printf("\n");
         }
+
+        pvDeInit(&pModel);
+        free(pModel);
     }
 
-    ofstream of("result.txt", ios::trunc);
+    auto time_end = std::chrono::steady_clock::now();
+    double dr_ms = std::chrono::duration<double, std::milli>(time_end - time_start).count();
 
-    of << "{";
-    for (int i = 0; i < 11; ++i)
-        of << GaussData[i] << ",";
-    of << GaussData[11] << "}";
+    cout << "\n运行时间: " << dr_ms / 1000.0 << " s" << endl;
 
-    of.close();
-    ifs.close();
     system("pause");
     return 0;
 }
@@ -200,12 +273,12 @@ void pvInit(xModel **model)
 {
     xModel *pTemp = *model;
 
-    pTemp->W1 = (double *)malloc(4 * sizeof(double));
-    pTemp->W2 = (double *)malloc(4 * sizeof(double));
-    pTemp->B1 = (double *)malloc(2 * sizeof(double));
+    pTemp->W1 = (double *)malloc(12 * sizeof(double));
+    pTemp->W2 = (double *)malloc(8 * sizeof(double));
+    pTemp->B1 = (double *)malloc(4 * sizeof(double));
     pTemp->B2 = (double *)malloc(2 * sizeof(double));
 
-    pTemp->buffer = (double *)malloc(8 * sizeof(double));
+    pTemp->buffer = (double *)malloc(13 * sizeof(double));
     pTemp->bare_rate = LOSS_NUM;
 
     pTemp->loss = (double *)malloc(pTemp->bare_rate * sizeof(double));
@@ -214,32 +287,42 @@ void pvInit(xModel **model)
     pTemp->best_loss = inf;
 
     unsigned i = 0, count = 0;
-    // 伪随机数，满足高斯分布
-    index = 0;
-    for (unsigned j = 0; j < 12; ++j)
-    {
-        GaussData[j] = dist(gen);
-    }
+    // // 伪随机数，满足高斯分布
+    // index = 0;
+    // for (unsigned j = 0; j < GAUSS_NUM; ++j)
+    // {
+    //     GaussData[j] = dist(gen);
+    // }
 
-    // double GaussData[12] =
-    //     /* 高斯分布 N(0, 0.2) */
-    //     {1.39955, 0.789535, 2.875, -2.74442, -1.51085, 0.367908, 1.45579, 1.19469, -2.13551, -0.0324631, 2.213, 3.40381};
+    double GaussData[26] =
+        /* 高斯分布 N(0, 0.2) */
+        {-1.55287, 0.408441, -2.12173, 1.27837, -1.24401, 0.583065, 1.2051, -3.67265, -0.523984, 1.97568, -1.99259, -3.21694, 0.0261942, -0.473885, 2.60909, -0.578997, 2.00597, 0.729969, -1.71852, 2.85951, 0.0653581, 0.0193447, 0.0862588, 0.00925318, 0.172263, 0.114868};
 
-    for (; i < 2; ++i)
-    {
-        pTemp->B1[i] = GaussData[count++];
-        pTemp->B2[i] = GaussData[count++];
-    }
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < 12; ++i)
     {
         pTemp->W1[i] = GaussData[count++];
+    }
+
+    for (i = 0; i < 8; ++i)
+    {
         pTemp->W2[i] = GaussData[count++];
     }
-    for (i = 0; i < 5; ++i)
+
+    for (i = 0; i < 4; ++i)
+    {
+        pTemp->B1[i] = GaussData[count++];
+    }
+
+    for (i = 0; i < 2; ++i)
+    {
+        pTemp->B2[i] = GaussData[count++];
+    }
+
+    for (i = 0; i < LOSS_NUM; ++i)
     {
         pTemp->loss[i] = inf;
     }
-    for (i = 0; i < 8; ++i)
+    for (i = 0; i < 13; ++i)
     {
         pTemp->buffer[i] = 0;
     }
@@ -258,30 +341,46 @@ void pvDeInit(xModel **model)
 }
 
 // 前向传播
-void pvForward(xModel **model, double *x, unsigned ulCount)
+void pvForward(xModel **model, double *_x, unsigned ulCount)
 {
     xModel *pModel = *model;
-    // 隐藏层和输出层
-    double *h = (double *)malloc(2 * sizeof(double));
+
+    double sum = 0;
+    for (int i = 0; i < 3; ++i)
+        sum += _x[i];
+
+    // 归一化层、隐藏层和输出层
+    double *x = (double *)malloc(3 * sizeof(double));
+    double *h = (double *)malloc(4 * sizeof(double));
     double *o = (double *)malloc(2 * sizeof(double));
+
+    // 进行归一化
+    for (int i = 0; i < 3; ++i)
+        x[i] = _x[i] / sum;
 
     pvWriteBuffer(&pModel, x1, x[0]);
     pvWriteBuffer(&pModel, x2, x[1]);
+    pvWriteBuffer(&pModel, x3, x[2]);
 
-    h[0] = ReLU(pModel->W1[0] * x[0] + pModel->W1[1] * x[1] + pModel->B1[0]);
-    h[1] = ReLU(pModel->W1[2] * x[0] + pModel->W1[3] * x[1] + pModel->B1[1]);
+    h[0] = ReLU(pModel->W1[0] * x[0] + pModel->W1[1] * x[1] + pModel->W1[2] * x[2] + pModel->B1[0]);
+    h[1] = ReLU(pModel->W1[3] * x[0] + pModel->W1[4] * x[1] + pModel->W1[5] * x[2] + pModel->B1[1]);
+    h[2] = ReLU(pModel->W1[6] * x[0] + pModel->W1[7] * x[1] + pModel->W1[8] * x[2] + pModel->B1[2]);
+    h[3] = ReLU(pModel->W1[9] * x[0] + pModel->W1[10] * x[1] + pModel->W1[11] * x[2] + pModel->B1[3]);
 
     pvWriteBuffer(&pModel, h1, h[0]);
     pvWriteBuffer(&pModel, h2, h[1]);
+    pvWriteBuffer(&pModel, h3, h[2]);
+    pvWriteBuffer(&pModel, h4, h[3]);
 
-    o[0] = pModel->W2[0] * h[0] + pModel->W2[1] * h[1] + pModel->B2[0];
-    o[1] = pModel->W2[2] * h[0] + pModel->W2[3] * h[1] + pModel->B2[1];
+    o[0] = pModel->W2[0] * h[0] + pModel->W2[1] * h[1] + pModel->W2[2] * h[2] + pModel->W2[3] * h[3] + pModel->B2[0];
+    o[1] = pModel->W2[4] * h[0] + pModel->W2[5] * h[1] + pModel->W2[6] * h[2] + pModel->W2[7] * h[3] + pModel->B2[1];
 
     Logistic(&o, 2);
 
     pvWriteBuffer(&pModel, o1, o[0]);
     pvWriteBuffer(&pModel, o2, o[1]);
 
+    free(x);
     free(h);
     free(o);
 }
@@ -290,9 +389,9 @@ void pvForward(xModel **model, double *x, unsigned ulCount)
 double pvBackward(xModel **model, double lr, double *y, unsigned ulCount)
 {
     // 参数导数存储缓存
-    double *dtBuf = (double *)malloc(12 * sizeof(double));
-    // dL/dh1 和 dL/dh2 - 因为偏导符号似乎容易出现乱码所以用 dx 来表示了
-    double *dtMid = (double *)malloc(2 * sizeof(double));
+    double *dtBuf = (double *)malloc(26 * sizeof(double));
+    // dL/dhi - 因为偏导符号似乎容易出现乱码所以用 dx 来表示了
+    double *dtMid = (double *)malloc(4 * sizeof(double));
     xModel *pModel = *model;
 
     double newLoss = inf;
@@ -301,78 +400,68 @@ double pvBackward(xModel **model, double lr, double *y, unsigned ulCount)
     pvReadBuffer(&pModel, o1, &o[0]);
     pvReadBuffer(&pModel, o2, &o[1]);
 
-    double h[2] = {-1, -1};
+    double h[4] = {-1, -1, -1, -1};
     pvReadBuffer(&pModel, h1, &h[0]);
     pvReadBuffer(&pModel, h2, &h[1]);
+    pvReadBuffer(&pModel, h3, &h[2]);
+    pvReadBuffer(&pModel, h4, &h[3]);
 
-    double x[2] = {-1, -1};
+    double x[3] = {-1, -1, -1};
     pvReadBuffer(&pModel, x1, &x[0]);
     pvReadBuffer(&pModel, x2, &x[1]);
+    pvReadBuffer(&pModel, x3, &x[2]);
 
     // 计算 Loss 作为提前停止训练凭证
     newLoss = CrossEntropy(o, y, 2);
 
     // dL/dh1 和 dL/dh2
-    dtMid[0] = pModel->W2[0] * (1 - o[0]) * (-y[0] / 2) + pModel->W2[2] * (1 - o[1]) * (-y[1] / 2);
-    dtMid[1] = pModel->W2[1] * (1 - o[0]) * (-y[0] / 2) + pModel->W2[3] * (1 - o[1]) * (-y[1] / 2);
+    for (int i = 0; i < 4; ++i)
+        dtMid[i] = pModel->W2[i] * (1 - o[0]) * (-y[0] / 2) + pModel->W2[4 + i] * (1 - o[1]) * (-y[1] / 2);
 
-    // dL/dW2
-    dtBuf[0] = h[0] * (1 - o[0]) * (-y[0] / 2);
-    dtBuf[1] = h[1] * (1 - o[0]) * (-y[0] / 2);
-    dtBuf[2] = h[0] * (1 - o[1]) * (-y[1] / 2);
-    dtBuf[3] = h[1] * (1 - o[1]) * (-y[1] / 2);
+    // dL/dW2, dL/dB2
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 4; ++j)
+            dtBuf[12 + j + 4 * i] = h[j] * (1 - o[i]) * (-y[i] / 2);
 
-    // dL/dB2
-    dtBuf[4] = (1 - o[0]) * (-y[0] / 2);
-    dtBuf[5] = (1 - o[1]) * (-y[1] / 2);
+        dtBuf[24 + i] = (1 - o[i]) * (-y[i] / 2);
+    }
 
     // dL/dW1, dL/dB1
-    if (h[0] > 0)
+    for (int i = 0; i < 4; ++i)
     {
-        dtBuf[6] = x[0] * dtMid[0];
-        dtBuf[7] = x[1] * dtMid[0];
-        dtBuf[10] = dtMid[0];
-    }
-    else
-    {
-        dtBuf[6] = 0;
-        dtBuf[7] = 0;
-        dtBuf[10] = 0;
-    }
+        if (h[i] > 0)
+        {
+            for (int j = 0; j < 3; ++j)
+                dtBuf[j + 3 * i] = x[j] * dtMid[i];
 
-    if (h[1] > 0)
-    {
-        dtBuf[8] = x[0] * dtMid[1];
-        dtBuf[9] = x[1] * dtMid[1];
-        dtBuf[11] = dtMid[1];
-    }
-    else
-    {
-        dtBuf[8] = 0;
-        dtBuf[9] = 0;
-        dtBuf[11] = 0;
+            dtBuf[20 + i] = dtMid[i];
+        }
+        else
+        {
+            for (int j = 0; j < 3; ++j)
+                dtBuf[j + 3 * i] = 0;
+
+            dtBuf[20 + i] = 0;
+        }
     }
 
     // 更新所有参数
-    // W2 = W2 - dL/dW2
-    pModel->W2[0] -= dtBuf[0] * lr;
-    pModel->W2[1] -= dtBuf[1] * lr;
-    pModel->W2[2] -= dtBuf[2] * lr;
-    pModel->W2[3] -= dtBuf[3] * lr;
-
-    // B2 = B2 - dL/dB2
-    pModel->B2[0] -= dtBuf[4] * lr;
-    pModel->B2[1] -= dtBuf[5] * lr;
-
     // W1 = W1 - dL/dW1
-    pModel->W1[0] -= dtBuf[6] * lr;
-    pModel->W1[1] -= dtBuf[7] * lr;
-    pModel->W1[2] -= dtBuf[8] * lr;
-    pModel->W1[3] -= dtBuf[9] * lr;
-
+    for (int i = 0; i < 12; ++i)
+        pModel->W1[i] -= dtBuf[i] * lr;
+    // W2 = W2 - dL/dW2
+    for (int i = 0; i < 8; ++i)
+        pModel->W2[i] -= dtBuf[12 + i] * lr;
     // B1 = B1 - dL/dB1
-    pModel->B1[0] -= dtBuf[10] * lr;
-    pModel->B1[1] -= dtBuf[11] * lr;
+    for (int i = 0; i < 4; ++i)
+        pModel->B1[i] -= dtBuf[20 + i] * lr;
+    // B2 = B2 - dL/dB2
+    for (int i = 0; i < 2; ++i)
+        pModel->B2[i] -= dtBuf[24 + i] * lr;
+
+    free(dtBuf);
+    free(dtMid);
 
     return newLoss;
 }
@@ -386,7 +475,7 @@ int ulGetResultIndex(xModel **model)
     pvReadBuffer(&pTemp, o1, &o[0]);
     pvReadBuffer(&pTemp, o2, &o[1]);
 
-    printf("p(o) = [ %.6f, %.6f ]\n", o[0], o[1]);
+    // printf("p(o) = [ %.6f, %.6f ]\n", o[0], o[1]);
 
     if (o[0] != -1 && o[1] != -1 && o[0] >= o[1])
         return 0;
@@ -419,7 +508,7 @@ unsigned char pvEarlyStopDetect(xModel **model)
             return (unsigned char)0;
         }
     }
-    // 如果已经不在了，那么就一定超过了五次
+    // 如果已经不在了，那么就一定超过了 LOSS_NUM 次
     return (unsigned char)1;
 }
 
@@ -462,7 +551,7 @@ void pvDisplayWeights(xModel **model)
     double newLoss = inf;
     if (pModel->loss_end - pModel->loss == 0)
     {
-        newLoss = *(pModel->loss + 4);
+        newLoss = *(pModel->loss + LOSS_NUM - 1);
     }
     else
     {
@@ -470,8 +559,13 @@ void pvDisplayWeights(xModel **model)
     }
 
     printf("\n");
-    printf("W:| %.6f %.6f | B:| %.6f | W':| %.6f %.6f | B':| %.6f | Loss: %.6f\n", pModel->W1[0], pModel->W1[1], pModel->B1[0], pModel->W2[0], pModel->W2[1], pModel->B2[0], newLoss);
-    printf("  | %.6f %.6f |   | %.6f |    | %.6f %.6f |    | %.6f |\n", pModel->W1[2], pModel->W1[3], pModel->B1[1], pModel->W2[2], pModel->W2[3], pModel->B2[1]);
+    printf("Loss: %.6f\n\n", newLoss);
+    printf("W:| %03.06f %03.06f %03.06f | B:| %03.06f |\n", pModel->W1[0], pModel->W1[1], pModel->W1[2], pModel->B1[0]);
+    printf("  | %03.06f %03.06f %03.06f |   | %03.06f |\n", pModel->W1[3], pModel->W1[4], pModel->W1[5], pModel->B1[1]);
+    printf("  | %03.06f %03.06f %03.06f |   | %03.06f |\n", pModel->W1[6], pModel->W1[7], pModel->W1[8], pModel->B1[2]);
+    printf("  | %03.06f %03.06f %03.06f |   | %03.06f |\n\n", pModel->W1[9], pModel->W1[10], pModel->W1[11], pModel->B1[3]);
+    printf("W':| %03.06f %03.06f %03.06f %03.06f | B':| %03.06f |\n", pModel->W2[0], pModel->W2[1], pModel->W2[2], pModel->W2[3], pModel->B2[0]);
+    printf("   | %03.06f %03.06f %03.06f %03.06f |    | %03.06f |\n\n", pModel->W2[4], pModel->W2[5], pModel->W2[6], pModel->W2[7], pModel->B2[1]);
 }
 
 // ReLU 函数

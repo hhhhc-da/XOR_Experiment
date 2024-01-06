@@ -2,6 +2,6 @@
 #define MAIN_NANOKA_H
 
 #include "NeuralNetwork.h"
-#include "XOR_Model.h"
+#include "Model.h"
 
 #endif

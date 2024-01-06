@@ -1,6 +1,5 @@
 #include "NeuralNetwork.h"
 
-// ReLU 函数
 double ReLU(double dMem)
 {
     if (dMem > 0)
@@ -9,7 +8,6 @@ double ReLU(double dMem)
         return 0;
 }
 
-// Logistic 分类器
 void Logistic(double **pMem, unsigned ulCount)
 {
     double *pMemory = (double *)malloc(ulCount * sizeof(double));
@@ -28,7 +26,6 @@ void Logistic(double **pMem, unsigned ulCount)
     *pMem = pMemory;
 }
 
-// 交叉熵损失函数
 double CrossEntropy(double *pMem, double *pLabel, unsigned ulCount)
 {
     double ret = 0;
@@ -40,7 +37,6 @@ double CrossEntropy(double *pMem, double *pLabel, unsigned ulCount)
     return -ret / ulCount;
 }
 
-/* 测试函数 */
 // int main(void)
 // {
 //     double x = 2, y = -2;
