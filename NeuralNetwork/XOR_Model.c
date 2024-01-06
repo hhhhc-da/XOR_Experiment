@@ -211,7 +211,7 @@ int ulGetResultIndex(xModel **model)
 // 提前终止训练
 unsigned char pvEarlyStopDetect(xModel **model)
 {
-    // 连续 bare_rate 次不下降就停止
+    // 连续 bare_rate 次不下降就停止 
     xModel *pTemp = *model;
 
     unsigned i = 0;
