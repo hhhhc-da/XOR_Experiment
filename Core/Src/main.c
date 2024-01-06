@@ -46,9 +46,9 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-// Ñ§Ï°ÂÊ
+// å­¦ä¹ çŽ‡
 #define LR 0.001
-// µü´ú×î´óÂÖÊý
+// è¿­ä»£æœ€å¤§è½®æ•°
 #define EPOCH 5
 
 /* USER CODE END PM */
@@ -112,23 +112,23 @@ int main(void)
   OLED_Clear();
   
   
-  // ÑµÁ·¼¯£¬¸ñÊ½Âú×ã input[2k] XOR input[2k+1] = output[2k]
+  // è®­ç»ƒé›†ï¼Œæ ¼å¼æ»¡è¶³ input[2k] XOR input[2k+1] = output[2k]
     double input[8] = {0, 0, 0, 1, 1, 1, 1, 0};
-    // 1 0 ±íÊ¾ 0 (index)£¬0 1 ±íÊ¾ 1
+    // 1 0 è¡¨ç¤º 0 (index)ï¼Œ0 1 è¡¨ç¤º 1
     double output[8] = {1, 0, 0, 1, 1, 0, 0, 1};
 
     pModel = (xModel *)malloc(sizeof(xModel));
     pvInit(&pModel);
 
 	
-	// ÑµÁ· 17 ´Î¾Í»áÄÚ´æÒç³ö
+	// è®­ç»ƒ 17 æ¬¡å°±ä¼šå†…å­˜æº¢å‡º
     unsigned count = 0;
 
     do
     {
         // if (count % 200 == 0)
         {
-            // Ã¿Á½°ÙÂÖÑµÁ··­×ªÒ»´ÎµçÆ½
+            // æ¯ä¸¤ç™¾è½®è®­ç»ƒç¿»è½¬ä¸€æ¬¡ç”µå¹³
             printf("\r\n\r\nEpoch[%u]\r\n", ++count);
         }
 
@@ -150,7 +150,7 @@ int main(void)
             *(pModel->loss_end) = loss;
             ++(pModel->loss_end);
         }
-        // ¸üÐÂ×î¼Ñ loss
+        // æ›´æ–°æœ€ä½³ loss
         if (loss < pModel->best_loss)
         {
             pModel->best_loss = loss;
@@ -160,29 +160,29 @@ int main(void)
     } while (!pvEarlyStopDetect(&pModel) && count < EPOCH);
 	
 	
-	printf("\r\n²âÊÔ %.3f XOR %.3f:\r\n",input[2],input[3]);
+	printf("\r\næµ‹è¯• %.3f XOR %.3f:\r\n",input[2],input[3]);
     pvForward(&pModel, &input[2], 2);
     int ret0 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\r\n\r\n", ret0);
+    printf("èŽ·å–ç»“æžœä¸º: %d\r\n\r\n", ret0);
 
-    printf("²âÊÔ %.3f XOR %.3f:\r\n",input[6],input[7]);
+    printf("æµ‹è¯• %.3f XOR %.3f:\r\n",input[6],input[7]);
     pvForward(&pModel, &input[6], 2);
     int ret1 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\r\n\r\n", ret1);
+    printf("èŽ·å–ç»“æžœä¸º: %d\r\n\r\n", ret1);
 
-    printf("²âÊÔ %.3f XOR %.3f:\r\n",input[4],input[5]);
+    printf("æµ‹è¯• %.3f XOR %.3f:\r\n",input[4],input[5]);
     pvForward(&pModel, &input[4], 2);
     int ret2 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\r\n\r\n", ret2);
+    printf("èŽ·å–ç»“æžœä¸º: %d\r\n\r\n", ret2);
 
-    printf("²âÊÔ %.3f XOR %.3f:\r\n",input[0],input[1]);
+    printf("æµ‹è¯• %.3f XOR %.3f:\r\n",input[0],input[1]);
     pvForward(&pModel, &input[0], 2);
     int ret3 = ulGetResultIndex(&pModel);
-    printf("»ñÈ¡½á¹ûÎª: %d\r\n\r\n", ret3);
+    printf("èŽ·å–ç»“æžœä¸º: %d\r\n\r\n", ret3);
 	
 	double in[2] = {0, 0};
 	
-	// ±£´æÄ£ÐÍ
+	// ä¿å­˜æ¨¡åž‹
 	saveModel(&pModel);
 	
 	HAL_Delay(100);
@@ -204,7 +204,7 @@ int main(void)
 	pvForward(&pModel, &in[0], 2);
 	int ret = ulGetResultIndex(&pModel);
 	if(ret == -1)
-		printf("Éñ¾­ÍøÂç¼ÆËã´íÎó");
+		printf("ç¥žç»ç½‘ç»œè®¡ç®—é”™è¯¯");
 	else{
 		HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, ret);
 		char str[20];
@@ -214,6 +214,9 @@ int main(void)
 		OLED_ShowStr(10,4,(unsigned char*)str, 1);
 	}
   }
+
+  pvDeInit(&pModel);
+  free(pModel);
   /* USER CODE END 3 */
 }
 
@@ -266,11 +269,11 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 void saveModel(xModel **model){
-	// Ð´ÈëÊý¾Ý¸ñÊ½ W11,W12,W21,W22,B1,B2,W11',W12',W21',W22',B1',B2'£¬Ð´Èëµ½µØÖ· 0x00
+	// å†™å…¥æ•°æ®æ ¼å¼ W11,W12,W21,W22,B1,B2,W11',W12',W21',W22',B1',B2'ï¼Œå†™å…¥åˆ°åœ°å€ 0x00
 	double_data_t *temp = (double_data_t*)malloc(sizeof(double_data_t));
 	xModel *pTemp = *model;
 	
-	// Ê¹ÓÃ¹²ÓÃÌåÖ¸ÕëÅúÁ¿´æ´¢
+	// ä½¿ç”¨å…±ç”¨ä½“æŒ‡é’ˆæ‰¹é‡å­˜å‚¨
 	temp->data = pTemp->W1[0];
 	WriteAT24C256(0x00,temp->byte,8);
 	HAL_Delay(100);
@@ -315,11 +318,11 @@ void saveModel(xModel **model){
 }
 
 void loadModel(xModel **model){
-	// ¶ÁÈ¡Êý¾Ý¸ñÊ½ W11,W12,W21,W22,B1,B2,W11',W12',W21',W22',B1',B2'£¬´ÓµØÖ· 0x00 ¿ªÊ¼¶ÁÈ¡
+	// è¯»å–æ•°æ®æ ¼å¼ W11,W12,W21,W22,B1,B2,W11',W12',W21',W22',B1',B2'ï¼Œä»Žåœ°å€ 0x00 å¼€å§‹è¯»å–
 	double_data_t *temp = (double_data_t*)malloc(sizeof(double_data_t));
 	xModel *pTemp = *model;
 	
-	// Ê¹ÓÃ¹²ÓÃÌåÖ¸ÕëÅúÁ¿´æ´¢
+	// ä½¿ç”¨å…±ç”¨ä½“æŒ‡é’ˆæ‰¹é‡å­˜å‚¨
 	ReadAT24C256(0x00,temp->byte,8);
 	pTemp->W1[0] = temp->data;
 	HAL_Delay(100);
