@@ -13,7 +13,7 @@ An XOR expreiment used C and C++(Only use to fix network's weights)
 主要用于我修改之后的代码，拿去当黑盒函数混答辩了（划掉）
 
 ### Tips
--Tip1：STM32F407VET6 训练还没测试，上次因为少 free 了三个导致爆堆了-
+-Tip1：STM32F407VET6 训练还没测试，上次少 free 了三个导致内存泄漏，然后爆堆了-
 
 -Tip2：STM32F103C8T6 我开着 wwdg 跑的，进入计算时会导致复位 MCU，不建议尝试-
 
