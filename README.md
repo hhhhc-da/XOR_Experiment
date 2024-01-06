@@ -15,7 +15,7 @@ An XOR expreiment used C and C++(Only use to fix network's weights)
 ### Tips
 -Tip1：STM32F407VET6 训练还没测试，上次少 free 了三个导致内存泄漏，然后爆堆了-
 
--Tip2：STM32F103C8T6 我开着 wwdg 跑的，进入计算时会导致复位 MCU，不建议尝试-
+-Tip2：STM32F103C8T6 我开着 wwdg 跑的时候，进入计算时会导致复位 MCU，不建议尝试-
 
 （高速复位 MCU 非常的废板子，请珍爱与板子相遇的缘分）
 
