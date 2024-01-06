@@ -1,16 +1,16 @@
 #include "XOR_Model.h"
 #include "stm32f4xx_hal.h"
 
-// ´ú±íÎŞÇî´ó
+// ä»£è¡¨æ— ç©·å¤§
 const double inf = HUGE_VAL;
-// Ë¥¼õ±£»¤ÂÖÊı
+// è¡°å‡ä¿æŠ¤è½®æ•°
 #define GAMA_STEP 100
-// ÈİÈÌÂÊ
+// å®¹å¿ç‡
 #define LOSS_NUM 20
-// Ë¥¼õÂÊ
+// è¡°å‡ç‡
 #define GR 0.99
 
-// ³õÊ¼»¯ xModel
+// åˆå§‹åŒ– xModel
 void pvInit(xModel **model)
 {
     xModel *pTemp = *model;
@@ -29,9 +29,9 @@ void pvInit(xModel **model)
     pTemp->best_loss = inf;
 
     unsigned i = 0, count = 0;
-    // Î±Ëæ»úÊı - ÍêÈ«¿É¸´ÏÖ£¬Ã¿´Î½á¹û¶¼ÊÇÒ»ÑùµÄ
+    // ä¼ªéšæœºæ•° - å®Œå…¨å¯å¤ç°ï¼Œæ¯æ¬¡ç»“æœéƒ½æ˜¯ä¸€æ ·çš„
     double GaussData[12] =
-        /* ¸ßË¹·Ö²¼ N(0, 0.2) ÌáÇ°ÑµÁ·ºÃÁË */
+        /* é«˜æ–¯åˆ†å¸ƒ N(0, 0.2) æå‰è®­ç»ƒå¥½äº† */
         {1.440419, 1.922039, 7.566921, 4.691829, -1.881080, -0.892971, -4.617500, 7.535398, 6.866347, -5.832800, 3.658982, 7.375399};
 
     for (; i < 2; ++i)
@@ -54,7 +54,7 @@ void pvInit(xModel **model)
     }
 }
 
-// Ïú»Ù xModel
+// é”€æ¯ xModel
 void pvDeInit(xModel **model)
 {
     xModel *pTemp = *model;
@@ -66,11 +66,11 @@ void pvDeInit(xModel **model)
     free(pTemp->buffer);
 }
 
-// Ç°Ïò´«²¥
+// å‰å‘ä¼ æ’­
 void pvForward(xModel **model, double *x, unsigned ulCount)
 {
     xModel *pModel = *model;
-    // Òş²Ø²ãºÍÊä³ö²ã
+    // éšè—å±‚å’Œè¾“å‡ºå±‚
     double *h = (double *)malloc(2 * sizeof(double));
     double *o = (double *)malloc(2 * sizeof(double));
 
@@ -95,12 +95,12 @@ void pvForward(xModel **model, double *x, unsigned ulCount)
     free(o);
 }
 
-// ·´Ïò´«²¥(·µ»ØÕâÒ»¸öÑù±¾µÄ loss)
+// åå‘ä¼ æ’­(è¿”å›è¿™ä¸€ä¸ªæ ·æœ¬çš„ loss)
 double pvBackward(xModel **model, double lr, double *y, unsigned ulCount)
 {
-    // ²ÎÊıµ¼Êı´æ´¢»º´æ
+    // å‚æ•°å¯¼æ•°å­˜å‚¨ç¼“å­˜
     double *dtBuf = (double *)malloc(12 * sizeof(double));
-    // dL/dh1 ºÍ dL/dh2 - ÒòÎªÆ«µ¼·ûºÅËÆºõÈİÒ×³öÏÖÂÒÂëËùÒÔÓÃ dx À´±íÊ¾ÁË
+    // dL/dh1 å’Œ dL/dh2 - å› ä¸ºåå¯¼ç¬¦å·ä¼¼ä¹å®¹æ˜“å‡ºç°ä¹±ç æ‰€ä»¥ç”¨ dx æ¥è¡¨ç¤ºäº†
     double *dtMid = (double *)malloc(2 * sizeof(double));
     xModel *pModel = *model;
 
@@ -118,10 +118,10 @@ double pvBackward(xModel **model, double lr, double *y, unsigned ulCount)
     pvReadBuffer(&pModel, x1, &x[0]);
     pvReadBuffer(&pModel, x2, &x[1]);
 
-    // ¼ÆËã Loss ×÷ÎªÌáÇ°Í£Ö¹ÑµÁ·Æ¾Ö¤
+    // è®¡ç®— Loss ä½œä¸ºæå‰åœæ­¢è®­ç»ƒå‡­è¯
     newLoss = CrossEntropy(o, y, 2);
 
-    // dL/dh1 ºÍ dL/dh2
+    // dL/dh1 å’Œ dL/dh2
     dtMid[0] = pModel->W2[0] * (1 - o[0]) * (-y[0] / 2) + pModel->W2[2] * (1 - o[1]) * (-y[1] / 2);
     dtMid[1] = pModel->W2[1] * (1 - o[0]) * (-y[0] / 2) + pModel->W2[3] * (1 - o[1]) * (-y[1] / 2);
 
@@ -162,7 +162,7 @@ double pvBackward(xModel **model, double lr, double *y, unsigned ulCount)
         dtBuf[11] = 0;
     }
 
-    // ¸üĞÂËùÓĞ²ÎÊı
+    // æ›´æ–°æ‰€æœ‰å‚æ•°
     // W2 = W2 - dL/dW2
     pModel->W2[0] -= dtBuf[0] * lr;
     pModel->W2[1] -= dtBuf[1] * lr;
@@ -183,10 +183,13 @@ double pvBackward(xModel **model, double lr, double *y, unsigned ulCount)
     pModel->B1[0] -= dtBuf[10] * lr;
     pModel->B1[1] -= dtBuf[11] * lr;
 
+    free(dtMid);
+    free(dtBuf);
+
     return newLoss;
 }
 
-// Êä³ö½á¹û
+// è¾“å‡ºç»“æœ
 int ulGetResultIndex(xModel **model)
 {
     xModel *pTemp = *model;
@@ -205,40 +208,40 @@ int ulGetResultIndex(xModel **model)
         return -1;
 }
 
-// ÌáÇ°ÖÕÖ¹ÑµÁ·
+// æå‰ç»ˆæ­¢è®­ç»ƒ
 unsigned char pvEarlyStopDetect(xModel **model)
 {
-    // Á¬Ğø bare_rate ´Î²»ÏÂ½µ¾ÍÍ£Ö¹
+    // è¿ç»­ bare_rate æ¬¡ä¸ä¸‹é™å°±åœæ­¢
     xModel *pTemp = *model;
 
     unsigned i = 0;
     for (; i < pTemp->bare_rate; ++i)
     {
-        // Èç¹û×îµÍµÄ loss »¹ÔÚÑ­»·¶ÓÁĞÄÚËµÃ÷²»×ãÎå´Î
+        // å¦‚æœæœ€ä½çš„ loss è¿˜åœ¨å¾ªç¯é˜Ÿåˆ—å†…è¯´æ˜ä¸è¶³äº”æ¬¡
         if (pTemp->best_loss == pTemp->loss[i])
         {
             return (unsigned char)0;
         }
     }
-    // Èç¹ûÒÑ¾­²»ÔÚÁË£¬ÄÇÃ´¾ÍÒ»¶¨³¬¹ıÁËÎå´Î
+    // å¦‚æœå·²ç»ä¸åœ¨äº†ï¼Œé‚£ä¹ˆå°±ä¸€å®šè¶…è¿‡äº†äº”æ¬¡
     return (unsigned char)1;
 }
 
-// Ğ´Èë»º³åÇø
+// å†™å…¥ç¼“å†²åŒº
 void pvWriteBuffer(xModel **model, ucType pos, double data)
 {
-    // uint32_t* ºÍ uint8_t »áºÏ³É uint32_t*
+    // uint32_t* å’Œ uint8_t ä¼šåˆæˆ uint32_t*
     *((*model)->buffer + pos) = data;
 }
 
-// ¶ÁÈ¡»º³åÇø
+// è¯»å–ç¼“å†²åŒº
 void pvReadBuffer(xModel **model, ucType pos, double *data)
 {
-    // uint32_t* ºÍ uint8_t »áºÏ³É uint32_t*
+    // uint32_t* å’Œ uint8_t ä¼šåˆæˆ uint32_t*
     *data = *((*model)->buffer + pos);
 }
 
-// Çå³ı»º³åÇø
+// æ¸…é™¤ç¼“å†²åŒº
 void pvClearBuffer(xModel **model)
 {
     xModel *pTemp = *model;
@@ -247,7 +250,7 @@ void pvClearBuffer(xModel **model)
         *(pTemp->buffer + i) = 0;
 }
 
-// Ñ§Ï°ÂÊË¥¼õ
+// å­¦ä¹ ç‡è¡°å‡
 double lr_fall(unsigned epoch)
 {
     if (epoch > GAMA_STEP)
@@ -256,7 +259,7 @@ double lr_fall(unsigned epoch)
         return 1;
 }
 
-// ±¨¸æ²ÎÊıºÍËğÊ§
+// æŠ¥å‘Šå‚æ•°å’ŒæŸå¤±
 void pvDisplayWeights(xModel **model)
 {
     xModel *pModel = *model;
